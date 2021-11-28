@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { ethers } from "ethers";
 import twitterLogo from "./assets/twitter-logo.svg";
+import SelectCharacter from "./Components/SelectCharacter";
+import Arena from "./Components/Arena";
+import { CONTRACT_ADDRESS, transformCharacterData } from "./constants";
+import myEpicGame from "./utils/MyEpicGame.json";
 import "./App.css";
 
 // Constants
@@ -8,6 +13,7 @@ const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
+  const [characterNFT, setCharacterNFT] = useState(null);
 
   const checkIfWalletConnected = async () => {
     try {
@@ -30,6 +36,31 @@ const App = () => {
       }
     } catch (err) {
       console.log(err);
+    }
+  };
+
+  const renderContent = () => {
+    if (!currentAccount) {
+      return (
+        <div className="connect-wallet-container">
+          <img
+            src="https://i.makeagif.com/media/1-24-2015/w03MFY.gif"
+            alt="Monty Python Gif"
+          />
+          <button
+            className="cta-button connect-wallet-button"
+            onClick={connectWalletAction}
+          >
+            Connect Wallet To Play
+          </button>
+        </div>
+      );
+    } else if (currentAccount && !characterNFT) {
+      return <SelectCharacter setCharacterNFT={setCharacterNFT} />;
+    } else if (currentAccount && characterNFT) {
+      return (
+        <Arena characterNFT={characterNFT} setCharacterNFT={setCharacterNFT} />
+      );
     }
   };
 
@@ -57,24 +88,39 @@ const App = () => {
     checkIfWalletConnected();
   }, []);
 
+  useEffect(() => {
+    const fetchNFTMetadata = async () => {
+      console.log("Checking for Character NFT on address:", currentAccount);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const gameContract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        myEpicGame.abi,
+        signer
+      );
+
+      const txn = await gameContract.checkIfUserHasNFT();
+      if (txn.name) {
+        console.log("User has NFT");
+        setCharacterNFT(transformCharacterData(txn));
+      } else {
+        console.log("No NFT found");
+      }
+    };
+
+    if (currentAccount) {
+      console.log("CurrentAccount:", currentAccount);
+      fetchNFTMetadata();
+    }
+  }, [currentAccount]);
+
   return (
     <div className="App">
       <div className="container">
         <div className="header-container">
           <p className="header gradient-text">🦄 Pokemans 🦄</p>
           <p className="sub-text">Team up to beat team rocket!</p>
-          <div className="connect-wallet-container">
-            <img
-              src="https://i.makeagif.com/media/1-24-2015/w03MFY.gif"
-              alt="Monty Python Gif"
-            />
-            <button
-              className="cta-button connect-wallet-button"
-              onClick={connectWalletAction}
-            >
-              Connect Wallet To Play
-            </button>
-          </div>
+          {renderContent()}
         </div>
         <div className="footer-container">
           <img alt="Twitter Logo" className="twitter-logo" src={twitterLogo} />
