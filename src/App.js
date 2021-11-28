@@ -23,6 +23,7 @@ const App = () => {
 
       if (!ethereum) {
         console.log("Make sure you have MetaMask installed");
+        alert("Make sure you have MetaMask installed");
         return;
       }
       console.log("Ethereum global found", ethereum);
